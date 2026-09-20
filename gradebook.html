@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gradebook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --paper: #f6f1ea;
+    --paper-line: #e3dccf;
+    --panel: #ffffff;
+    --ink: #2a2724;
+    --slate: #5c6570;
+    --maroon: #822336;
+    --maroon-dark: #5c1827;
+    --accent-gray: #75787b;
+    --danger: #9a4a3a;
+    --radius: 10px;
+    --serif: "Lora", Georgia, serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1d1a17;
+      --paper-line: #38322b;
+      --panel: #262220;
+      --ink: #ece5d8;
+      --slate: #a9b1b8;
+      --maroon: #c4536b;
+      --maroon-dark: #e07d91;
+      --accent-gray: #b5b8ba;
+      --danger: #d98b78;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1d1a17;
+    --paper-line: #38322b;
+    --panel: #262220;
+    --ink: #ece5d8;
+    --slate: #a9b1b8;
+    --maroon: #c4536b;
+    --maroon-dark: #e07d91;
+    --accent-gray: #b5b8ba;
+    --danger: #d98b78;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px 16px 48px;
+  }
+  header.top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-plate {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border: 1px solid var(--paper-line);
+    border-radius: 10px;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .logo-plate svg { width: 100%; height: 100%; display: block; }
+  header.top h1 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 1.7rem;
+    margin: 0;
+    letter-spacing: 0.2px;
+  }
+  header.top .student {
+    font-size: 0.85rem;
+    color: var(--slate);
+  }
+  .sem-toggle {
+    display: inline-flex;
+    border: 1px solid var(--paper-line);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--panel);
+  }
+  .sem-toggle button {
+    border: none;
+    background: transparent;
+    padding: 7px 16px;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--slate);
+    cursor: pointer;
+  }
+  .sem-toggle button.active {
+    background: var(--maroon);
+    color: #fff;
+  }
+
+  .periods {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .period-card {
+    flex: 0 0 auto;
+    min-width: 108px;
+    border: 1px solid var(--paper-line);
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--sans);
+  }
+  .period-card.active {
+    border-color: var(--maroon);
+    box-shadow: 0 0 0 1px var(--maroon) inset;
+  }
+  .period-card .pnum {
+    font-size: 0.7rem;
+    color: var(--slate);
+    margin-bottom: 3px;
+  }
+  .period-card .pname {
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.2;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .period-card .pgrade {
+    margin-top: 6px;
+    font-family: var(--serif);
+    font-weight: 700;
+    color: var(--maroon);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ie-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-gray);
+    flex: 0 0 auto;
+  }
+  .ie-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-left: 3px solid var(--accent-gray);
+    background: var(--paper);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .ie-banner strong { color: var(--accent-gray); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--paper-line);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+
+  .course-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .seal {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2.5px solid var(--maroon);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--maroon);
+    transition: transform 0.25s ease;
+  }
+  .seal.pulse { animation: sealPulse 0.5s ease; }
+  @keyframes sealPulse {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+  .course-titlebox { flex: 1 1 auto; min-width: 0; }
+  .course-titlebox .label {
+    font-size: 0.75rem;
+    color: var(--slate);
+    margin-bottom: 2px;
+  }
+  .course-title {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .course-title input {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.1rem;
+    border: none;
+    border-bottom: 1px solid var(--paper-line);
+    background: transparent;
+    color: var(--ink);
+    padding: 2px 0;
+    width: 100%;
+    max-width: 260px;
+  }
+  .icon-btn {
+    border: none;
+    background: transparent;
+    color: var(--slate);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 4px;
+  }
+  .icon-btn:hover { color: var(--maroon); }
+
+  h2.section-title {
+    font-size: 0.8rem;
+    color: var(--slate);
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+  .course-note {
+    font-size: 0.82rem;
+    color: var(--slate);
+    margin: -4px 0 12px;
+  }
+
+  .stamp-group { margin-bottom: 14px; }
+  .stamp-group-label {
+    font-size: 0.72rem;
+    color: var(--slate);
+    margin-bottom: 6px;
+  }
+  .stamp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 8px;
+  }
+  .stamp {
+    border: 1.5px solid var(--paper-line);
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 10px 0;
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--ink);
+    cursor: pointer;
+    text-align: center;
+  }
+  .stamp:hover { border-color: var(--maroon); }
+  .stamp:active { background: var(--maroon); color: #fff; }
+
+  .history-list {
+    list-style: none;
+    margin: 0 0 24px;
+    padding: 0;
+    border-top: 1px solid var(--paper-line);
+  }
+  .history-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 2px;
+    border-bottom: 1px solid var(--paper-line);
+    font-size: 0.9rem;
+  }
+  .history-list .hgrade {
+    font-family: var(--serif);
+    font-weight: 700;
+    color: var(--maroon);
+    width: 34px;
+  }
+  .history-list .hdate { flex: 1; color: var(--slate); }
+  .history-list .hdel {
+    border: none;
+    background: none;
+    color: var(--slate);
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .history-list .hdel:hover { color: var(--danger); }
+  .empty-note {
+    color: var(--slate);
+    font-size: 0.88rem;
+    padding: 10px 0 20px;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 220px;
+    margin-top: 4px;
+  }
+
+  footer.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 8px;
+  }
+  .btn {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--paper-line);
+    background: var(--panel);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .btn.primary {
+    background: var(--maroon);
+    border-color: var(--maroon);
+    color: #fff;
+  }
+  .btn.ghost { color: var(--slate); }
+
+  /* Setup modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 16, 14, 0.55);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 32px 16px;
+    overflow-y: auto;
+    z-index: 20;
+  }
+  .modal {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 26px 22px;
+    max-width: 480px;
+    width: 100%;
+  }
+  .modal h2 {
+    font-family: var(--serif);
+    margin: 0 0 6px;
+    font-size: 1.3rem;
+  }
+  .modal p.sub { color: var(--slate); font-size: 0.88rem; margin: 0 0 18px; }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--slate);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .field input[type="text"] {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--paper-line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 0.92rem;
+  }
+  .checkbox-field { background: var(--paper); border-radius: 8px; padding: 10px 12px; }
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .checkbox-label input { width: 16px; height: 16px; }
+  .checkbox-note {
+    margin: 6px 0 0;
+    font-size: 0.78rem;
+    color: var(--slate);
+    font-weight: 400;
+  }
+  .group-label {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 18px 0 8px;
+    color: var(--maroon);
+  }
+  .two-col { display: flex; gap: 10px; }
+  .two-col .field { flex: 1; }
+  .modal-actions { margin-top: 20px; text-align: right; }
+
+  @media (max-width: 480px) {
+    .seal { width: 54px; height: 54px; font-size: 1.25rem; }
+    header.top h1 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+  const STORAGE_KEY = "gradebook_data_v1";
+  const GRADE_ORDER = ["A","A-","B+","B","B-","C+","C","F","IE"];
+  const GPA = {"A":4.0,"A-":3.75,"B+":3.5,"B":3.0,"B-":2.75,"C+":2.5,"C":2.0,"F":0.0,"IE":0.0,"P":null};
+  const STAMP_GROUPS = [
+    { label: "Exceeds standard", grades: ["A"] },
+    { label: "Meets standard", grades: ["A-","B+","B","B-"] },
+    { label: "Approaching standard", grades: ["C+","C"] },
+    { label: "Below standard", grades: ["F"] },
+    { label: "Insufficient evidence", grades: ["IE"] }
+  ];
+  const MODIFIED_GRADING_GROUP = { label: "Modified grading (IEP)", grades: ["P"] };
+  const PASS_FAIL_GROUPS = [
+    { label: "Course requirements met", grades: ["A"] },
+    { label: "Course requirements not met", grades: ["F"] }
+  ];
+  const PASS_FAIL_PERIODS = new Set([3]);
+  function stampGroupsFor(period){
+    if (PASS_FAIL_PERIODS.has(period)) return PASS_FAIL_GROUPS;
+    return state.modifiedGrading ? STAMP_GROUPS.concat([MODIFIED_GRADING_GROUP]) : STAMP_GROUPS;
+  }
+  const GPA_TICKS = [0, 2.0, 2.5, 2.75, 3.0, 3.5, 3.75, 4.0];
+  const GPA_TICK_LABELS = {0:"F", 2.0:"C", 2.5:"C+", 2.75:"B-", 3.0:"B", 3.5:"B+", 3.75:"A-", 4.0:"A"};
+  const PROFICIENCY_LEVEL = {
+    "A": "Exceeds standard", "A-": "Meets standard", "B+": "Meets standard",
+    "B": "Meets standard", "B-": "Meets standard", "C+": "Approaching standard",
+    "C": "Approaching standard", "F": "Below standard", "IE": "Insufficient evidence",
+    "P": "Modified grading, credit earned"
+  };
+  const PERIODS = [1,2,3,4,5,6];
+  const YEAR_LONG = new Set([1,2,3]);
+  const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 590 567.57">
+    <defs><style>.cls-1{fill:#822336;}.cls-2{fill:#fff;}.cls-3{fill:#d1d3d4;}</style></defs>
+    <polygon class="cls-2" points="590 292.25 590 0 0 0 0 292.25 162.97 292.25 162.97 331.22 111.89 331.22 111.89 567.57 478.11 567.57 478.11 331.22 427.03 331.22 427.03 292.25 590 292.25"/>
+    <polygon points="565 267.25 565 25 25 25 25 267.25 187.97 267.25 187.97 356.22 136.89 356.22 136.89 542.57 453.11 542.57 453.11 356.22 402.03 356.22 402.03 267.25 565 267.25"/>
+    <polygon class="cls-3" points="535.81 239.29 535.81 52.95 54.19 52.95 54.19 239.29 190.41 239.29 190.41 183.39 217.16 183.39 217.16 384.18 166.08 384.18 166.08 514.61 423.92 514.61 423.92 384.18 372.84 384.18 372.84 183.39 399.6 183.39 399.6 239.29 535.81 239.29"/>
+    <polygon class="cls-1" points="343.65 155.44 428.78 155.44 428.78 211.34 506.62 211.34 506.62 80.9 83.38 80.9 83.38 211.34 161.22 211.34 161.22 155.44 246.35 155.44 246.35 412.13 195.27 412.13 195.27 486.66 394.73 486.66 394.73 412.13 343.65 412.13 343.65 155.44"/>
+  </svg>`;
+
+  function emptyData(){
+    const courses = {};
+    PERIODS.forEach(p => {
+      if (YEAR_LONG.has(p)) {
+        courses[p] = { name: "", grades: {1: [], 2: []} };
+      } else {
+        courses[p] = { names: {1: "", 2: ""}, grades: {1: [], 2: []} };
+      }
+    });
+    return { studentName: "", semester: 1, setupDone: false, modifiedGrading: false, courses };
+  }
+
+  function load(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return emptyData();
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.courses) return emptyData();
+      if (typeof parsed.modifiedGrading !== "boolean") parsed.modifiedGrading = false;
+      return parsed;
+    } catch(e) { return emptyData(); }
+  }
+  function save(){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} }
+
+  let state = load();
+  let activePeriod = 1;
+
+  function courseName(period, semester){
+    const c = state.courses[period];
+    return YEAR_LONG.has(period) ? c.name : c.names[semester];
+  }
+  function setCourseName(period, semester, value){
+    const c = state.courses[period];
+    if (YEAR_LONG.has(period)) c.name = value; else c.names[semester] = value;
+  }
+  function gradesFor(period, semester){
+    return state.courses[period].grades[semester];
+  }
+  function latestGrade(period, semester){
+    const g = gradesFor(period, semester);
+    if (!g.length) return null;
+    return g[g.length - 1];
+  }
+  function addGrade(period, semester, letter){
+    const g = gradesFor(period, semester);
+    g.push({ t: Date.now(), g: letter });
+    save();
+  }
+  function deleteGrade(period, semester, index){
+    gradesFor(period, semester).splice(index, 1);
+    save();
+  }
+  function fmtDate(ts){
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
+  }
+  function fmtDateTime(ts){
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, {month:"short", day:"numeric"}) + " · " +
+           d.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
+  }
+
+  function parseCSV(text){
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += char;
+      } else {
+        if (char === '"') inQuotes = true;
+        else if (char === ',') { row.push(field); field = ""; }
+        else if (char === '\r') { /* skip */ }
+        else if (char === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+        else field += char;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  async function handleImportFile(file, opts){
+    opts = opts || {};
+    try {
+      const text = await file.text();
+      const table = parseCSV(text).filter(r => r.length && r.some(c => c.trim() !== ""));
+      if (!table.length) { alert("That file doesn't look like a Gradebook export — no rows were found."); return; }
+      const header = table[0].map(h => h.trim().toLowerCase());
+      const idx = {
+        student: header.indexOf("student"),
+        period: header.indexOf("period"),
+        course: header.indexOf("course"),
+        semester: header.indexOf("semester"),
+        date: header.indexOf("date"),
+        grade: header.indexOf("grade")
+      };
+      if (idx.period === -1 || idx.course === -1 || idx.semester === -1 || idx.date === -1 || idx.grade === -1) {
+        alert("This file doesn't match the Gradebook export format, so it can't be imported.");
+        return;
+      }
+      if (!opts.fromSetup) {
+        if (!confirm("Importing will replace all courses and grades currently stored on this device with the contents of this file. Continue?")) return;
+      }
+      const fresh = emptyData();
+      let sawStudent = "";
+      let sawP = false;
+      let rowCount = 0;
+      table.slice(1).forEach(r => {
+        if (!r.length || r.every(c => c.trim() === "")) return;
+        const period = parseInt(r[idx.period], 10);
+        const semester = parseInt(r[idx.semester], 10);
+        if (!PERIODS.includes(period) || (semester !== 1 && semester !== 2)) return;
+        const course = idx.course > -1 ? (r[idx.course] || "").trim() : "";
+        const dateStr = (r[idx.date] || "").trim();
+        const grade = (r[idx.grade] || "").trim();
+        if (idx.student > -1 && r[idx.student] && !sawStudent) sawStudent = r[idx.student].trim();
+        if (course) {
+          if (YEAR_LONG.has(period)) fresh.courses[period].name = course;
+          else fresh.courses[period].names[semester] = course;
+        }
+        if (dateStr && grade) {
+          const t = Date.parse(dateStr);
+          if (!isNaN(t)) {
+            fresh.courses[period].grades[semester].push({ t, g: grade });
+            if (grade === "P") sawP = true;
+            rowCount++;
+          }
+        }
+      });
+      if (!rowCount && !sawStudent) {
+        alert("No recognizable grade rows were found in that file.");
+        return;
+      }
+      PERIODS.forEach(p => { [1,2].forEach(s => { fresh.courses[p].grades[s].sort((a,b) => a.t - b.t); }); });
+      fresh.studentName = sawStudent;
+      fresh.modifiedGrading = sawP;
+      fresh.setupDone = true;
+      state = fresh;
+      save();
+      activePeriod = 1;
+      render();
+    } catch (e) {
+      alert("Could not read that file. Make sure it's a CSV exported from Gradebook.");
+    }
+  }
+
+  const app = document.getElementById("app");
+  let chartInstance = null;
+
+  function render(){
+    if (!state.setupDone) { renderSetup(); return; }
+    app.innerHTML = "";
+
+    // Header
+    const header = document.createElement("header");
+    header.className = "top";
+    header.innerHTML = `
+      <div class="brand">
+        <div class="logo-plate">${LOGO_SVG}</div>
+        <div>
+          <h1>Gradebook</h1>
+          <div class="student">${escapeHtml(state.studentName || "Student")}</div>
+        </div>
+      </div>
+      <div class="sem-toggle" id="semToggle">
+        <button data-sem="1" class="${state.semester===1?'active':''}">Semester 1</button>
+        <button data-sem="2" class="${state.semester===2?'active':''}">Semester 2</button>
+      </div>
+    `;
+    app.appendChild(header);
+    header.querySelector("#semToggle").addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      state.semester = parseInt(btn.dataset.sem, 10);
+      save();
+      render();
+    });
+
+    // Period strip
+    const strip = document.createElement("nav");
+    strip.className = "periods";
+    PERIODS.forEach(p => {
+      const name = courseName(p, state.semester) || "(no course)";
+      const latest = latestGrade(p, state.semester);
+      const card = document.createElement("button");
+      card.className = "period-card" + (p === activePeriod ? " active" : "");
+      card.innerHTML = `
+        <div class="pnum">Period ${p}${YEAR_LONG.has(p) ? " · year" : " · sem"}</div>
+        <div class="pname">${escapeHtml(name)}</div>
+        <div class="pgrade">${latest ? latest.g : "—"}${latest && latest.g === "IE" ? '<span class="ie-dot" title="Insufficient evidence — needs updating"></span>' : ""}</div>
+      `;
+      card.addEventListener("click", () => { activePeriod = p; render(); });
+      strip.appendChild(card);
+    });
+    app.appendChild(strip);
+
+    // Main panel
+    const panel = document.createElement("div");
+    panel.className = "panel";
+
+    const name = courseName(activePeriod, state.semester);
+    const latest = latestGrade(activePeriod, state.semester);
+
+    const courseHead = document.createElement("div");
+    courseHead.className = "course-head";
+    courseHead.innerHTML = `
+      <div class="seal" id="seal">${latest ? latest.g : "–"}</div>
+      <div class="course-titlebox">
+        <div class="label">Period ${activePeriod}${YEAR_LONG.has(activePeriod) ? " (year-long)" : " (this semester)"}</div>
+        <div class="course-title">
+          <span id="titleDisplay">${escapeHtml(name || "Untitled course")}</span>
+          <button class="icon-btn" id="editTitleBtn" title="Rename course">✎</button>
+        </div>
+      </div>
+    `;
+    panel.appendChild(courseHead);
+
+    const ieBannerWrap = document.createElement("div");
+    panel.appendChild(ieBannerWrap);
+    function renderIeBanner(){
+      const l = latestGrade(activePeriod, state.semester);
+      if (l && l.g === "IE") {
+        ieBannerWrap.innerHTML = `
+          <div class="ie-banner">
+            <span>⚑</span>
+            <span><strong>Insufficient evidence</strong> is a temporary designation. Replace it with a proficiency score once there's enough evidence to determine one.</span>
+          </div>
+        `;
+      } else {
+        ieBannerWrap.innerHTML = "";
+      }
+    }
+    renderIeBanner();
+
+    courseHead.querySelector("#editTitleBtn").addEventListener("click", () => {
+      const titleSpan = courseHead.querySelector("#titleDisplay");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = name || "";
+      input.placeholder = "Course name";
+      titleSpan.replaceWith(input);
+      input.focus();
+      const commit = () => {
+        setCourseName(activePeriod, state.semester, input.value.trim());
+        save();
+        render();
+      };
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", (e) => { if (e.key === "Enter") input.blur(); });
+    });
+
+    // Stamp grid
+    const stampSection = document.createElement("div");
+    const isPassFail = PASS_FAIL_PERIODS.has(activePeriod);
+    stampSection.innerHTML = `<h2 class="section-title">${isPassFail ? "Log completion status" : "Log today's grade"}</h2>` +
+      (isPassFail ? `<p class="course-note">This course is completion-based: 100% of coursework earns an A; anything less is recorded as F.</p>` : "");
+    const groupsToRender = stampGroupsFor(activePeriod);
+    groupsToRender.forEach(group => {
+      const groupWrap = document.createElement("div");
+      groupWrap.className = "stamp-group";
+      const groupLabel = document.createElement("div");
+      groupLabel.className = "stamp-group-label";
+      groupLabel.textContent = group.label;
+      groupWrap.appendChild(groupLabel);
+      const stampGrid = document.createElement("div");
+      stampGrid.className = "stamp-grid";
+      group.grades.forEach(letter => {
+        const btn = document.createElement("button");
+        btn.className = "stamp";
+        btn.textContent = letter;
+        btn.addEventListener("click", () => {
+          addGrade(activePeriod, state.semester, letter);
+          const seal = panel.querySelector("#seal");
+          seal.textContent = letter;
+          seal.classList.remove("pulse");
+          void seal.offsetWidth;
+          seal.classList.add("pulse");
+          renderHistoryAndChart();
+          renderPeriodStripGrade();
+          renderIeBanner();
+        });
+        stampGrid.appendChild(btn);
+      });
+      groupWrap.appendChild(stampGrid);
+      stampSection.appendChild(groupWrap);
+    });
+    panel.appendChild(stampSection);
+
+    // History + chart container (re-rendered independently after logging)
+    const dynamicWrap = document.createElement("div");
+    dynamicWrap.id = "dynamicWrap";
+    panel.appendChild(dynamicWrap);
+
+    app.appendChild(panel);
+
+    function renderHistoryAndChart(){
+      dynamicWrap.innerHTML = "";
+      const entries = gradesFor(activePeriod, state.semester);
+
+      const histTitle = document.createElement("h2");
+      histTitle.className = "section-title";
+      histTitle.textContent = "History";
+      dynamicWrap.appendChild(histTitle);
+
+      if (!entries.length) {
+        const p = document.createElement("div");
+        p.className = "empty-note";
+        p.textContent = "No grades logged yet for this course. Tap a letter above to start.";
+        dynamicWrap.appendChild(p);
+      } else {
+        const list = document.createElement("ul");
+        list.className = "history-list";
+        entries.slice().reverse().forEach((entry) => {
+          const realIndex = entries.indexOf(entry);
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <span class="hgrade">${entry.g}</span>
+            <span class="hdate">${fmtDateTime(entry.t)}</span>
+            <button class="hdel" data-i="${realIndex}">Remove</button>
+          `;
+          list.appendChild(li);
+        });
+        list.addEventListener("click", (e) => {
+          const btn = e.target.closest(".hdel");
+          if (!btn) return;
+          deleteGrade(activePeriod, state.semester, parseInt(btn.dataset.i, 10));
+          renderHistoryAndChart();
+          const l = latestGrade(activePeriod, state.semester);
+          panel.querySelector("#seal").textContent = l ? l.g : "–";
+          renderPeriodStripGrade();
+          renderIeBanner();
+        });
+        dynamicWrap.appendChild(list);
+
+        const chartTitle = document.createElement("h2");
+        chartTitle.className = "section-title";
+        chartTitle.textContent = "Grade over time";
+        dynamicWrap.appendChild(chartTitle);
+
+        const chartWrap = document.createElement("div");
+        chartWrap.className = "chart-wrap";
+        const canvas = document.createElement("canvas");
+        chartWrap.appendChild(canvas);
+        dynamicWrap.appendChild(chartWrap);
+
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        const styles = getComputedStyle(document.documentElement);
+        const maroon = styles.getPropertyValue("--maroon").trim();
+        const ink = styles.getPropertyValue("--ink").trim();
+        const gridColor = styles.getPropertyValue("--paper-line").trim();
+
+        const sorted = entries.slice().sort((a,b) => a.t - b.t);
+        chartInstance = new Chart(canvas.getContext("2d"), {
+          type: "line",
+          data: {
+            labels: sorted.map(e => fmtDate(e.t)),
+            datasets: [{
+              data: sorted.map(e => GPA[e.g]),
+              borderColor: maroon,
+              backgroundColor: maroon,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              tension: 0.25,
+              fill: false
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => sorted[ctx.dataIndex].g
+                }
+              }
+            },
+            scales: {
+              y: {
+                min: 0,
+                max: 4,
+                afterBuildTicks: (axis) => {
+                  axis.ticks = GPA_TICKS.map(v => ({ value: v }));
+                },
+                ticks: {
+                  color: ink,
+                  callback: (val) => GPA_TICK_LABELS[val] !== undefined ? GPA_TICK_LABELS[val] : ""
+                },
+                grid: { color: gridColor }
+              },
+              x: {
+                ticks: { color: ink, maxRotation: 0, autoSkip: true },
+                grid: { display: false }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    function renderPeriodStripGrade(){
+      const cards = strip.querySelectorAll(".period-card");
+      cards.forEach((card, idx) => {
+        const p = PERIODS[idx];
+        const l = latestGrade(p, state.semester);
+        const gradeEl = card.querySelector(".pgrade");
+        gradeEl.innerHTML = `${l ? l.g : "—"}${l && l.g === "IE" ? '<span class="ie-dot" title="Insufficient evidence — needs updating"></span>' : ""}`;
+      });
+    }
+
+    renderHistoryAndChart();
+
+    // Footer actions
+    const footer = document.createElement("footer");
+    footer.className = "actions";
+    footer.innerHTML = `
+      <button class="btn primary" id="exportBtn">Export all grades (CSV)</button>
+      <button class="btn ghost" id="importBtn">Import CSV</button>
+      <input type="file" accept=".csv" id="importFile" style="display:none">
+      <button class="btn ghost" id="editSetupBtn">Edit courses</button>
+      <button class="btn ghost" id="resetBtn">Reset all data</button>
+    `;
+    app.appendChild(footer);
+    footer.querySelector("#exportBtn").addEventListener("click", exportCsv);
+    footer.querySelector("#importBtn").addEventListener("click", () => footer.querySelector("#importFile").click());
+    footer.querySelector("#importFile").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (f) handleImportFile(f, { fromSetup: false });
+      e.target.value = "";
+    });
+    footer.querySelector("#editSetupBtn").addEventListener("click", () => {
+      state.setupDone = false;
+      render();
+    });
+    footer.querySelector("#resetBtn").addEventListener("click", () => {
+      if (confirm("This clears every course and grade stored on this device. Continue?")) {
+        state = emptyData();
+        save();
+        activePeriod = 1;
+        render();
+      }
+    });
+  }
+
+  function renderSetup(){
+    app.innerHTML = "";
+    const backdrop = document.createElement("div");
+    backdrop.className = "modal-backdrop";
+    const modal = document.createElement("div");
+    modal.className = "modal";
+    modal.innerHTML = `
+      <h2>Set up your gradebook</h2>
+      <p class="sub">This is stored only on this device/browser. Fill in what you know — you can rename courses anytime.</p>
+      <div class="field checkbox-field">
+        <label class="checkbox-label" style="font-weight:600;">
+          <span>Switched computers? Import your last exported CSV</span>
+        </label>
+        <p class="checkbox-note">This fills in your name, courses, and full grade history from a file you exported before, so you don't have to start over.</p>
+        <button type="button" class="btn ghost" id="importSetupBtn" style="margin-top:8px;">Import from CSV</button>
+        <input type="file" accept=".csv" id="importSetupFile" style="display:none">
+      </div>
+      <div class="field">
+        <label for="nameInput">Your name</label>
+        <input type="text" id="nameInput" placeholder="e.g. Alex Rivera" value="${escapeHtml(state.studentName || "")}">
+      </div>
+      <div class="field checkbox-field">
+        <label class="checkbox-label">
+          <input type="checkbox" id="modifiedGradingInput" ${state.modifiedGrading ? "checked" : ""}>
+          Modified grading applies (per IEP)
+        </label>
+        <p class="checkbox-note">Adds a P option. Per district policy, P is available when performance is above 1.5 on the proficiency scale, and earns credit for the course.</p>
+      </div>
+      <div class="group-label">Year-long courses</div>
+      ${[1,2,3].map(p => `
+        <div class="field">
+          <label>Period ${p}</label>
+          <input type="text" data-period="${p}" data-kind="year" placeholder="Course name" value="${escapeHtml(state.courses[p].name || "")}">
+        </div>
+      `).join("")}
+      <div class="group-label">Semester courses</div>
+      ${[4,5,6].map(p => `
+        <div class="two-col">
+          <div class="field">
+            <label>Period ${p} · Semester 1</label>
+            <input type="text" data-period="${p}" data-kind="sem1" placeholder="Course name" value="${escapeHtml(state.courses[p].names[1] || "")}">
+          </div>
+          <div class="field">
+            <label>Period ${p} · Semester 2</label>
+            <input type="text" data-period="${p}" data-kind="sem2" placeholder="Course name" value="${escapeHtml(state.courses[p].names[2] || "")}">
+          </div>
+        </div>
+      `).join("")}
+      <div class="modal-actions">
+        <button class="btn primary" id="saveSetupBtn">Save and continue</button>
+      </div>
+    `;
+    backdrop.appendChild(modal);
+    app.appendChild(backdrop);
+
+    modal.querySelector("#importSetupBtn").addEventListener("click", () => modal.querySelector("#importSetupFile").click());
+    modal.querySelector("#importSetupFile").addEventListener("change", (e) => {
+      const f = e.target.files[0];
+      if (f) handleImportFile(f, { fromSetup: true });
+      e.target.value = "";
+    });
+
+    modal.querySelector("#saveSetupBtn").addEventListener("click", () => {
+      state.studentName = modal.querySelector("#nameInput").value.trim();
+      state.modifiedGrading = modal.querySelector("#modifiedGradingInput").checked;
+      modal.querySelectorAll("input[data-period]").forEach(inp => {
+        const p = parseInt(inp.dataset.period, 10);
+        const kind = inp.dataset.kind;
+        const val = inp.value.trim();
+        if (kind === "year") state.courses[p].name = val;
+        else if (kind === "sem1") state.courses[p].names[1] = val;
+        else if (kind === "sem2") state.courses[p].names[2] = val;
+      });
+      state.setupDone = true;
+      save();
+      render();
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+    }[c]));
+  }
+
+  async function exportCsv(){
+    const rows = [["Student","Period","Type","Course","Semester","Date","Grade","Proficiency Level","GPA Value"]];
+    PERIODS.forEach(p => {
+      [1,2].forEach(sem => {
+        const name = courseName(p, sem);
+        gradesFor(p, sem).forEach(entry => {
+          const gpaVal = GPA[entry.g];
+          rows.push([
+            state.studentName || "",
+            p,
+            YEAR_LONG.has(p) ? "Year-long" : "Semester",
+            name || "",
+            sem,
+            new Date(entry.t).toISOString(),
+            entry.g,
+            PROFICIENCY_LEVEL[entry.g] || "",
+            gpaVal === null || gpaVal === undefined ? "" : gpaVal
+          ]);
+        });
+      });
+    });
+    const csv = rows.map(r => r.map(csvEscape).join(",")).join("\r\n");
+
+    let handled = false;
+    try {
+      if (window.claude && typeof window.claude.use === "function") {
+        const downloads = await claude.use("downloads");
+        if (downloads) {
+          await downloads.save({
+            filename: (state.studentName ? state.studentName.replace(/[^a-z0-9]+/gi, "_") : "gradebook") + "_grades.csv",
+            data: new Blob([csv], {type: "text/csv"})
+          });
+          handled = true;
+        }
+      }
+    } catch (e) { /* fall through to standard browser download */ }
+
+    if (!handled) {
+      try {
+        const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = (state.studentName ? state.studentName.replace(/[^a-z0-9]+/gi, "_") : "gradebook") + "_grades.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        handled = true;
+      } catch (e) { /* fall through to manual fallback */ }
+    }
+
+    if (!handled) {
+      const win = window.open("", "_blank");
+      if (win) {
+        win.document.write("<pre style='white-space:pre-wrap;font-family:monospace;padding:16px;'>" + escapeHtml(csv) + "</pre>");
+      } else {
+        alert("Could not open a download. Copy this CSV manually:\n\n" + csv.slice(0, 500) + (csv.length > 500 ? "..." : ""));
+      }
+    }
+  }
+  function csvEscape(v){
+    const s = String(v);
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
