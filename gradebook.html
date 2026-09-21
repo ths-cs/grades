@@ -807,19 +807,6 @@
     // Period strip
     const strip = document.createElement("nav");
     strip.className = "periods";
-    PERIODS.forEach(p => {
-      const name = courseName(p, state.semester) || "(no course)";
-      const latest = latestGrade(p, state.semester);
-      const card = document.createElement("button");
-      card.className = "period-card" + (p === activePeriod ? " active" : "");
-      card.innerHTML = `
-        <div class="pnum">Period ${p}${YEAR_LONG.has(p) ? " · year" : " · sem"}</div>
-        <div class="pname">${escapeHtml(name)}</div>
-        <div class="pgrade">${latest ? latest.g : "—"}${latest && latest.g === "IE" ? '<span class="ie-dot" title="Insufficient evidence — needs updating"></span>' : ""}</div>
-      `;
-      card.addEventListener("click", () => { activePeriod = p; render(); });
-      strip.appendChild(card);
-    });
 
     const gpaResult = computeGpa(state.semester);
     const gpaCard = document.createElement("button");
@@ -833,12 +820,13 @@
     `;
     gpaCard.addEventListener("click", () => { gpaOpen = !gpaOpen; render(); });
     strip.appendChild(gpaCard);
-    app.appendChild(strip);
 
-    if (gpaOpen) {
-      const gpaPanel = document.createElement("div");
-      gpaPanel.className = "gpa-panel";
-      const rowsHtml = gpaResult.rows.map(r => {
+    function gpaValueHtml(result){
+      return `${result.gpa === null ? "—" : result.gpa.toFixed(2)}
+        <svg class="gpa-chevron${gpaOpen ? ' open' : ''}" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
+    }
+    function gpaPanelHtml(result){
+      const rowsHtml = result.rows.map(r => {
         if (r.included) {
           return `<div class="gpa-row">
             <span>Period ${r.period} &middot; ${escapeHtml(r.name)}</span>
@@ -850,11 +838,41 @@
           <span class="gpa-row-val">not counted, ${r.reason}</span>
         </div>`;
       }).join("");
-      gpaPanel.innerHTML = `
-        <div class="gpa-panel-summary">Semester ${state.semester} &middot; ${gpaResult.includedCount} of ${PERIODS.length} courses counted</div>
+      return `
+        <div class="gpa-panel-summary">Semester ${state.semester} &middot; ${result.includedCount} of ${PERIODS.length} courses counted</div>
         <div class="gpa-panel-rows">${rowsHtml}</div>
         <p class="gpa-panel-note">Periods 1–2 count at 0.5 credit per semester (1 credit for the year); Period 3 counts at 0.25 credit per semester (0.5 credit for the year). P is treated as 1.75 for this average. Courses with no grade yet or marked IE aren't counted.</p>
       `;
+    }
+    function refreshGpaCard(){
+      const fresh = computeGpa(state.semester);
+      const valueEl = gpaCard.querySelector(".gpa-value");
+      if (valueEl) valueEl.innerHTML = gpaValueHtml(fresh);
+      if (gpaOpen) {
+        const panelEl = app.querySelector(".gpa-panel");
+        if (panelEl) panelEl.innerHTML = gpaPanelHtml(fresh);
+      }
+    }
+
+    PERIODS.forEach(p => {
+      const name = courseName(p, state.semester) || "(no course)";
+      const latest = latestGrade(p, state.semester);
+      const card = document.createElement("button");
+      card.className = "period-card" + (p === activePeriod ? " active" : "");
+      card.innerHTML = `
+        <div class="pnum">Period ${p}${YEAR_LONG.has(p) ? " · year" : " · sem"}</div>
+        <div class="pname">${escapeHtml(name)}</div>
+        <div class="pgrade">${latest ? latest.g : "—"}${latest && latest.g === "IE" ? '<span class="ie-dot" title="Insufficient evidence — needs updating"></span>' : ""}</div>
+      `;
+      card.addEventListener("click", () => { activePeriod = p; render(); });
+      strip.appendChild(card);
+    });
+    app.appendChild(strip);
+
+    if (gpaOpen) {
+      const gpaPanel = document.createElement("div");
+      gpaPanel.className = "gpa-panel";
+      gpaPanel.innerHTML = gpaPanelHtml(gpaResult);
       app.appendChild(gpaPanel);
     }
 
@@ -951,6 +969,7 @@
           renderHistoryAndChart();
           renderPeriodStripGrade();
           renderIeBanner();
+          refreshGpaCard();
         });
         stampGrid.appendChild(btn);
       });
@@ -1002,6 +1021,7 @@
           panel.querySelector("#seal").textContent = l ? l.g : "–";
           renderPeriodStripGrade();
           renderIeBanner();
+          refreshGpaCard();
         });
         dynamicWrap.appendChild(list);
 
@@ -1078,7 +1098,7 @@
     }
 
     function renderPeriodStripGrade(){
-      const cards = strip.querySelectorAll(".period-card");
+      const cards = strip.querySelectorAll(".period-card:not(.gpa-card)");
       cards.forEach((card, idx) => {
         const p = PERIODS[idx];
         const l = latestGrade(p, state.semester);
