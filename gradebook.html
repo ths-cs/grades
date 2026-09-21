@@ -225,6 +225,55 @@
     color: var(--ink);
   }
   .ie-banner strong { color: var(--accent-gray); }
+  .gpa-card {
+    border-style: dashed;
+    min-width: 96px;
+  }
+  .gpa-value {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 1.15rem;
+  }
+  .gpa-chevron {
+    transition: transform 0.15s ease;
+    color: var(--slate);
+  }
+  .gpa-chevron.open { transform: rotate(180deg); }
+  .gpa-panel {
+    background: var(--panel);
+    border: 1px solid var(--paper-line);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+  }
+  .gpa-panel-summary {
+    font-size: 0.8rem;
+    color: var(--slate);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .gpa-panel-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    border-top: 1px solid var(--paper-line);
+    padding-top: 10px;
+  }
+  .gpa-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.88rem;
+  }
+  .gpa-row-val { color: var(--slate); white-space: nowrap; }
+  .gpa-row-excluded { color: var(--slate); }
+  .gpa-row-excluded .gpa-row-val { color: var(--slate); }
+  .gpa-panel-note {
+    font-size: 0.78rem;
+    color: var(--slate);
+    margin: 12px 0 0;
+  }
 
   .panel {
     background: var(--panel);
@@ -519,6 +568,31 @@
     "C": "Approaching standard", "F": "Below standard", "IE": "Insufficient evidence",
     "P": "Modified grading, credit earned"
   };
+  const GPA_AVERAGE = {"A":4.0,"A-":3.75,"B+":3.5,"B":3.0,"B-":2.75,"C+":2.5,"C":2.0,"F":0.0,"IE":null,"P":1.75};
+  const CREDIT_WEIGHT = { 1: 0.5, 2: 0.5, 3: 0.25, 4: 1.0, 5: 1.0, 6: 1.0 };
+  function computeGpa(semester){
+    const rows = [];
+    let weightedSum = 0, totalCredit = 0;
+    PERIODS.forEach(p => {
+      const name = courseName(p, semester) || "(no course)";
+      const latest = latestGrade(p, semester);
+      const credit = CREDIT_WEIGHT[p];
+      if (!latest) {
+        rows.push({ period: p, name, grade: null, credit, included: false, reason: "no grade yet" });
+        return;
+      }
+      const val = GPA_AVERAGE[latest.g];
+      if (val === null || val === undefined) {
+        rows.push({ period: p, name, grade: latest.g, credit, included: false, reason: latest.g === "IE" ? "insufficient evidence" : "not counted" });
+        return;
+      }
+      weightedSum += val * credit;
+      totalCredit += credit;
+      rows.push({ period: p, name, grade: latest.g, value: val, credit, included: true });
+    });
+    const gpa = totalCredit > 0 ? weightedSum / totalCredit : null;
+    return { gpa, rows, includedCount: rows.filter(r => r.included).length };
+  }
   const PERIODS = [1,2,3,4,5,6];
   const YEAR_LONG = new Set([1,2,3]);
   const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 590 567.57">
@@ -555,6 +629,7 @@
 
   let state = load();
   let activePeriod = 1;
+  let gpaOpen = false;
 
   function courseName(period, semester){
     const c = state.courses[period];
@@ -745,7 +820,43 @@
       card.addEventListener("click", () => { activePeriod = p; render(); });
       strip.appendChild(card);
     });
+
+    const gpaResult = computeGpa(state.semester);
+    const gpaCard = document.createElement("button");
+    gpaCard.className = "period-card gpa-card" + (gpaOpen ? " active" : "");
+    gpaCard.setAttribute("aria-expanded", gpaOpen ? "true" : "false");
+    gpaCard.innerHTML = `
+      <div class="pnum">Current GPA</div>
+      <div class="pgrade gpa-value">${gpaResult.gpa === null ? "—" : gpaResult.gpa.toFixed(2)}
+        <svg class="gpa-chevron${gpaOpen ? ' open' : ''}" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    `;
+    gpaCard.addEventListener("click", () => { gpaOpen = !gpaOpen; render(); });
+    strip.appendChild(gpaCard);
     app.appendChild(strip);
+
+    if (gpaOpen) {
+      const gpaPanel = document.createElement("div");
+      gpaPanel.className = "gpa-panel";
+      const rowsHtml = gpaResult.rows.map(r => {
+        if (r.included) {
+          return `<div class="gpa-row">
+            <span>Period ${r.period} &middot; ${escapeHtml(r.name)}</span>
+            <span class="gpa-row-val">${r.grade} &middot; ${r.value.toFixed(2)} &middot; ${r.credit} credit</span>
+          </div>`;
+        }
+        return `<div class="gpa-row gpa-row-excluded">
+          <span>Period ${r.period} &middot; ${escapeHtml(r.name)}</span>
+          <span class="gpa-row-val">not counted, ${r.reason}</span>
+        </div>`;
+      }).join("");
+      gpaPanel.innerHTML = `
+        <div class="gpa-panel-summary">Semester ${state.semester} &middot; ${gpaResult.includedCount} of ${PERIODS.length} courses counted</div>
+        <div class="gpa-panel-rows">${rowsHtml}</div>
+        <p class="gpa-panel-note">Periods 1–2 count at 0.5 credit per semester (1 credit for the year); Period 3 counts at 0.25 credit per semester (0.5 credit for the year). P is treated as 1.75 for this average. Courses with no grade yet or marked IE aren't counted.</p>
+      `;
+      app.appendChild(gpaPanel);
+    }
 
     // Main panel
     const panel = document.createElement("div");
