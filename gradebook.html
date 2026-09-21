@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Gradebook</title>
+<title>Gradebook Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:[email protected]..800&display=swap" rel="stylesheet">
@@ -352,6 +352,7 @@
     position: relative;
     height: 220px;
     margin-top: 4px;
+    padding-left: 4px;
   }
 
   footer.actions {
@@ -589,7 +590,7 @@
     try {
       const text = await file.text();
       const table = parseCSV(text).filter(r => r.length && r.some(c => c.trim() !== ""));
-      if (!table.length) { alert("That file doesn't look like a Gradebook export — no rows were found."); return; }
+      if (!table.length) { alert("That file doesn't look like a Gradebook Tracker export — no rows were found."); return; }
       const header = table[0].map(h => h.trim().toLowerCase());
       const idx = {
         student: header.indexOf("student"),
@@ -600,7 +601,7 @@
         grade: header.indexOf("grade")
       };
       if (idx.period === -1 || idx.course === -1 || idx.semester === -1 || idx.date === -1 || idx.grade === -1) {
-        alert("This file doesn't match the Gradebook export format, so it can't be imported.");
+        alert("This file doesn't match the Gradebook Tracker export format, so it can't be imported.");
         return;
       }
       if (!opts.fromSetup) {
@@ -645,7 +646,7 @@
       activePeriod = 1;
       render();
     } catch (e) {
-      alert("Could not read that file. Make sure it's a CSV exported from Gradebook.");
+      alert("Could not read that file. Make sure it's a CSV exported from Gradebook Tracker.");
     }
   }
 
@@ -663,7 +664,7 @@
       <div class="brand">
         <div class="logo-plate">${LOGO_SVG}</div>
         <div>
-          <h1>Gradebook</h1>
+          <h1>Gradebook Tracker</h1>
           <div class="student">${escapeHtml(state.studentName || "Student")}</div>
         </div>
       </div>
@@ -881,6 +882,9 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+              padding: { left: 8, right: 8, top: 6, bottom: 0 }
+            },
             plugins: {
               legend: { display: false },
               tooltip: {
@@ -898,6 +902,9 @@
                 },
                 ticks: {
                   color: ink,
+                  padding: 10,
+                  crossAlign: "far",
+                  font: { size: 12 },
                   callback: (val) => GPA_TICK_LABELS[val] !== undefined ? GPA_TICK_LABELS[val] : ""
                 },
                 grid: { color: gridColor }
