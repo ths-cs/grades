@@ -310,6 +310,7 @@
   function saveRoster(){ try { localStorage.setItem(ROSTER_KEY, JSON.stringify(roster)); } catch(e) {} }
 
   let roster = loadRoster();
+  cleanRosterSameDay();
   let semester = 1;
   let activeFilter = "all";
   let searchText = "";
@@ -407,6 +408,22 @@
       }
     });
     return result;
+  }
+  function cleanRosterSameDay(){
+    let changed = false;
+    Object.keys(roster).forEach(key => {
+      const rec = roster[key];
+      PERIODS.forEach(p => {
+        [1,2].forEach(s => {
+          const before = rec.courses[p].grades[s];
+          const sorted = before.slice().sort((a,b) => a.t - b.t);
+          const after = collapseSameDay(sorted);
+          if (after.length !== before.length) changed = true;
+          rec.courses[p].grades[s] = after;
+        });
+      });
+    });
+    if (changed) saveRoster();
   }
 
   async function handleImportFiles(fileList){
