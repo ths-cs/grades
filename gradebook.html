@@ -647,9 +647,18 @@
     if (!g.length) return null;
     return g[g.length - 1];
   }
+  function isSameDay(t1, t2){
+    const d1 = new Date(t1), d2 = new Date(t2);
+    return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+  }
   function addGrade(period, semester, letter){
     const g = gradesFor(period, semester);
-    g.push({ t: Date.now(), g: letter });
+    const now = Date.now();
+    if (g.length && isSameDay(g[g.length - 1].t, now)) {
+      g[g.length - 1] = { t: now, g: letter };
+    } else {
+      g.push({ t: now, g: letter });
+    }
     save();
   }
   function deleteGrade(period, semester, index){
@@ -944,7 +953,8 @@
     const stampSection = document.createElement("div");
     const isPassFail = PASS_FAIL_PERIODS.has(activePeriod);
     stampSection.innerHTML = `<h2 class="section-title">${isPassFail ? "Log completion status" : "Log today's grade"}</h2>` +
-      (isPassFail ? `<p class="course-note">This course is completion-based: 100% of coursework earns an A; anything less is recorded as F.</p>` : "");
+      (isPassFail ? `<p class="course-note">This course is completion-based: 100% of coursework earns an A; anything less is recorded as F.</p>` : "") +
+      `<p class="course-note">Only your last grade logged each day is kept, so tapping around won't add extra points to the chart.</p>`;
     const groupsToRender = stampGroupsFor(activePeriod);
     groupsToRender.forEach(group => {
       const groupWrap = document.createElement("div");

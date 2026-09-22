@@ -393,6 +393,22 @@
     return rows;
   }
 
+  function isSameDay(t1, t2){
+    const d1 = new Date(t1), d2 = new Date(t2);
+    return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+  }
+  function collapseSameDay(entries){
+    const result = [];
+    entries.forEach(e => {
+      if (result.length && isSameDay(result[result.length - 1].t, e.t)) {
+        result[result.length - 1] = e;
+      } else {
+        result.push(e);
+      }
+    });
+    return result;
+  }
+
   async function handleImportFiles(fileList){
     const files = Array.from(fileList || []);
     if (!files.length) return;
@@ -447,7 +463,12 @@
         if (!anyRow) { failedFiles.push(file.name); continue; }
         Object.keys(tempStudents).forEach(key => {
           const rec = tempStudents[key];
-          PERIODS.forEach(p => { [1,2].forEach(s => rec.courses[p].grades[s].sort((a,b) => a.t - b.t)); });
+          PERIODS.forEach(p => {
+            [1,2].forEach(s => {
+              const sorted = rec.courses[p].grades[s].slice().sort((a,b) => a.t - b.t);
+              rec.courses[p].grades[s] = collapseSameDay(sorted);
+            });
+          });
           roster[key] = rec;
           importedCount++;
         });
