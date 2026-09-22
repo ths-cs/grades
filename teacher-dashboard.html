@@ -564,6 +564,7 @@
       { id: "all", label: "All students" },
       { id: "hasF", label: "Has 1+ F" },
       { id: "hasF2", label: "Has 2+ F" },
+      { id: "gpa3", label: "GPA 3.0+" },
       { id: "down", label: "Trending down" },
       { id: "up", label: "Trending up" }
     ];
@@ -619,6 +620,7 @@
       let filtered = computed;
       if (activeFilter === "hasF") filtered = filtered.filter(c => c.hasF);
       else if (activeFilter === "hasF2") filtered = filtered.filter(c => c.hasF2);
+      else if (activeFilter === "gpa3") filtered = filtered.filter(c => c.gpa !== null && c.gpa >= 3.0);
       else if (activeFilter === "down") filtered = filtered.filter(c => c.trend.dir === "down");
       else if (activeFilter === "up") filtered = filtered.filter(c => c.trend.dir === "up");
       if (searchText.trim()) {
