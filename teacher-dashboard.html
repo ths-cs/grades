@@ -354,9 +354,21 @@
         if (v !== null && v !== undefined) pool.push({ t: e.t, v: v });
       });
     });
-    pool.sort((a,b) => a.t - b.t);
-    const recent = pool.slice(-4);
-    if (recent.length < 2) return { dir: "none" };
+    if (!pool.length) return { dir: "none" };
+    const byDay = new Map();
+    pool.forEach(e => {
+      const d = new Date(e.t);
+      const key = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+      if (!byDay.has(key)) byDay.set(key, { t: e.t, sum: 0, count: 0 });
+      const entry = byDay.get(key);
+      entry.sum += e.v;
+      entry.count += 1;
+      entry.t = Math.max(entry.t, e.t);
+    });
+    const dayPoints = Array.from(byDay.values()).map(e => ({ t: e.t, v: e.sum / e.count }));
+    dayPoints.sort((a,b) => a.t - b.t);
+    const recent = dayPoints.slice(-4);
+    if (recent.length === 1) return { dir: "flat" };
     const n = recent.length;
     const xs = recent.map((_, i) => i);
     const meanX = xs.reduce((a,b) => a+b, 0) / n;
