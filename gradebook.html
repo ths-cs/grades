@@ -363,6 +363,13 @@
     color: var(--slate);
     margin: -4px 0 12px;
   }
+  .note {
+    font-size: 0.75rem;
+    color: var(--slate);
+    text-align: center;
+    margin-top: 14px;
+    opacity: 0.75;
+  }
 
   .stamp-group { margin-bottom: 14px; }
   .stamp-group-label {
@@ -593,6 +600,7 @@
     const gpa = totalCredit > 0 ? weightedSum / totalCredit : null;
     return { gpa, rows, includedCount: rows.filter(r => r.included).length };
   }
+  const APP_VERSION = "v23";
   const PERIODS = [1,2,3,4,5,6];
   const YEAR_LONG = new Set([1,2,3]);
   const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 590 567.57">
@@ -1149,6 +1157,11 @@
         render();
       }
     });
+
+    const versionTag = document.createElement("div");
+    versionTag.className = "note";
+    versionTag.textContent = `Gradebook Tracker ${APP_VERSION}`;
+    app.appendChild(versionTag);
   }
 
   function renderSetup(){

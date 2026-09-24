@@ -275,6 +275,7 @@
 (function(){
   "use strict";
   const ROSTER_KEY = "teacher_dashboard_roster_v1";
+  const APP_VERSION = "v8";
   const PERIODS = [1,2,3,4,5,6];
   const YEAR_LONG = new Set([1,2,3]);
   const GPA_AVERAGE = {"A":4.0,"A-":3.75,"B+":3.5,"B":3.0,"B-":2.75,"C+":2.5,"C":2.0,"F":0.0,"IE":null,"P":1.75};
@@ -438,11 +439,29 @@
     if (changed) saveRoster();
   }
 
+  function mergeCourses(base, incoming){
+    const merged = emptyCourses();
+    PERIODS.forEach(p => {
+      if (YEAR_LONG.has(p)) {
+        merged[p].name = incoming[p].name || base[p].name || "";
+      } else {
+        merged[p].names[1] = incoming[p].names[1] || base[p].names[1] || "";
+        merged[p].names[2] = incoming[p].names[2] || base[p].names[2] || "";
+      }
+      [1,2].forEach(s => {
+        const combined = (base[p].grades[s] || []).concat(incoming[p].grades[s] || []);
+        combined.sort((a,b) => a.t - b.t);
+        merged[p].grades[s] = collapseSameDay(combined);
+      });
+    });
+    return merged;
+  }
+
   async function handleImportFiles(fileList){
     const files = Array.from(fileList || []);
     if (!files.length) return;
-    let importedCount = 0;
     const failedFiles = [];
+    const batchStudents = {};
     for (const file of files) {
       try {
         const text = await file.text();
@@ -460,7 +479,7 @@
         if (idx.period === -1 || idx.course === -1 || idx.semester === -1 || idx.date === -1 || idx.grade === -1) {
           failedFiles.push(file.name); continue;
         }
-        const tempStudents = {};
+        const fileStudents = {};
         let anyRow = false;
         table.slice(1).forEach(r => {
           if (!r.length || r.every(c => c.trim() === "")) return;
@@ -471,8 +490,8 @@
           const fallback = file.name.replace(/\.csv$/i, "");
           const displayName = rawName || fallback;
           const key = displayName.toLowerCase();
-          if (!tempStudents[key]) tempStudents[key] = { studentName: displayName, modifiedGrading: false, courses: emptyCourses() };
-          const rec = tempStudents[key];
+          if (!fileStudents[key]) fileStudents[key] = { studentName: displayName, modifiedGrading: false, courses: emptyCourses() };
+          const rec = fileStudents[key];
           const course = idx.course > -1 ? (r[idx.course] || "").trim() : "";
           const dateStr = (r[idx.date] || "").trim();
           const grade = (r[idx.grade] || "").trim();
@@ -490,24 +509,44 @@
           }
         });
         if (!anyRow) { failedFiles.push(file.name); continue; }
-        Object.keys(tempStudents).forEach(key => {
-          const rec = tempStudents[key];
+        Object.keys(fileStudents).forEach(key => {
+          const rec = fileStudents[key];
           PERIODS.forEach(p => {
             [1,2].forEach(s => {
               const sorted = rec.courses[p].grades[s].slice().sort((a,b) => a.t - b.t);
               rec.courses[p].grades[s] = collapseSameDay(sorted);
             });
           });
-          roster[key] = rec;
-          importedCount++;
+          if (batchStudents[key]) {
+            batchStudents[key] = {
+              studentName: rec.studentName || batchStudents[key].studentName,
+              modifiedGrading: batchStudents[key].modifiedGrading || rec.modifiedGrading,
+              courses: mergeCourses(batchStudents[key].courses, rec.courses)
+            };
+          } else {
+            batchStudents[key] = rec;
+          }
         });
       } catch (e) {
         failedFiles.push(file.name);
       }
     }
+    const keys = Object.keys(batchStudents);
+    keys.forEach(key => {
+      const incoming = batchStudents[key];
+      if (roster[key]) {
+        roster[key] = {
+          studentName: incoming.studentName || roster[key].studentName,
+          modifiedGrading: roster[key].modifiedGrading || incoming.modifiedGrading,
+          courses: mergeCourses(roster[key].courses, incoming.courses)
+        };
+      } else {
+        roster[key] = incoming;
+      }
+    });
     saveRoster();
     render();
-    let msg = importedCount ? `Imported ${importedCount} student${importedCount === 1 ? "" : "s"}.` : "No students were imported.";
+    let msg = keys.length ? `Imported ${keys.length} student${keys.length === 1 ? "" : "s"}.` : "No students were imported.";
     if (failedFiles.length) msg += ` Could not read: ${failedFiles.join(", ")}.`;
     alert(msg);
   }
@@ -528,6 +567,9 @@
     return String(str).replace(/[&<>"']/g, (c) => ({
       "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
     }[c]));
+  }
+  function toProperCase(str){
+    return String(str).toLowerCase().replace(/(^|[\s'-])\S/g, (c) => c.toUpperCase());
   }
   function fmtDate(ts){
     const d = new Date(ts);
@@ -637,6 +679,13 @@
     note.textContent = "Click any student to see their full course history and chart. All data stays in this browser.";
     app.appendChild(note);
 
+    const versionTag = document.createElement("div");
+    versionTag.className = "note";
+    versionTag.style.opacity = "0.75";
+    versionTag.style.marginTop = "4px";
+    versionTag.textContent = `Teacher Dashboard ${APP_VERSION}`;
+    app.appendChild(versionTag);
+
     renderRosterOnly();
 
     function renderRosterOnly(){
@@ -725,7 +774,7 @@
           : c.trend.dir === "flat" ? '<span class="trend-flat">&rarr;</span>'
           : '<span class="trend-flat">&mdash;</span>';
         row.innerHTML = `
-          <span class="rname">${escapeHtml(c.student.studentName)}</span>
+          <span class="rname">${escapeHtml(toProperCase(c.student.studentName))}</span>
           ${gradeCells}
           <span>${c.gpa === null ? "&mdash;" : c.gpa.toFixed(2)}</span>
           <span>${trendIcon}</span>
@@ -744,7 +793,7 @@
 
         row.querySelector(".remove-student").addEventListener("click", (e) => {
           e.stopPropagation();
-          if (confirm(`Remove ${c.student.studentName} from this dashboard?`)) {
+          if (confirm(`Remove ${toProperCase(c.student.studentName)} from this dashboard?`)) {
             delete roster[c.key];
             saveRoster();
             if (expandedKey === c.key) expandedKey = null;
