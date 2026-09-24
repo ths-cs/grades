@@ -600,7 +600,33 @@
     const gpa = totalCredit > 0 ? weightedSum / totalCredit : null;
     return { gpa, rows, includedCount: rows.filter(r => r.included).length };
   }
-  const APP_VERSION = "v23";
+  const CHANGELOG = [
+    { v: "v1", note: "Initial build: six periods, CSV export, grade-over-time chart, local per-student storage." },
+    { v: "v2", note: "Switched to standards-based grading scale (A, A-, B+, B, B-, C+, C, F, IE)." },
+    { v: "v3", note: "Added modified-grading (IEP) P option." },
+    { v: "v4", note: "Added a reminder for grades still marked IE." },
+    { v: "v5", note: "Added school logo and matched accent colors to it." },
+    { v: "v6", note: "Added CSV import, to restore data on a new device." },
+    { v: "v7", note: "Made Period 3 pass/fail (A/F only)." },
+    { v: "v8", note: "Excluded the P option from Period 3." },
+    { v: "v9", note: "Added a standalone browser-download fallback for hosting outside claude.ai." },
+    { v: "v10", note: "Retitled to Gradebook Tracker." },
+    { v: "v11", note: "Switched to Google Sans Flex font; added a two-column desktop layout." },
+    { v: "v12", note: "Fixed a broken Chart.js version reference." },
+    { v: "v13", note: "Improved chart axis label padding and alignment." },
+    { v: "v14", note: "Added a C- grade option." },
+    { v: "v15", note: "Removed the C- grade option per feedback." },
+    { v: "v16", note: "Fixed course name color on period cards in dark mode." },
+    { v: "v17", note: "Added a light/dark theme toggle." },
+    { v: "v18", note: "Added the Current GPA button and breakdown panel." },
+    { v: "v19", note: "Corrected Periods 1-2 credit weight to 0.5 per semester." },
+    { v: "v20", note: "Corrected Period 3 credit weight to 0.25 per semester." },
+    { v: "v21", note: "Moved the GPA button to the front of the period strip." },
+    { v: "v22", note: "Fixed a GPA/period display bug caused by a strip index mismatch." },
+    { v: "v23", note: "Prevented duplicate same-day grade entries." },
+    { v: "v24", note: "Added this self-documenting changelog." }
+  ];
+  const APP_VERSION = CHANGELOG[CHANGELOG.length - 1].v;
   const PERIODS = [1,2,3,4,5,6];
   const YEAR_LONG = new Set([1,2,3]);
   const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 590 567.57">
@@ -1161,6 +1187,7 @@
     const versionTag = document.createElement("div");
     versionTag.className = "note";
     versionTag.textContent = `Gradebook Tracker ${APP_VERSION}`;
+    versionTag.title = CHANGELOG[CHANGELOG.length - 1].note;
     app.appendChild(versionTag);
   }
 

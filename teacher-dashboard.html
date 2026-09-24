@@ -275,7 +275,19 @@
 (function(){
   "use strict";
   const ROSTER_KEY = "teacher_dashboard_roster_v1";
-  const APP_VERSION = "v8";
+  const CHANGELOG = [
+    { v: "v1", note: "Initial dashboard: multi-file CSV import, stat cards, filters, roster table, per-student detail chart." },
+    { v: "v2", note: "Removed the period-scope filter; added Has 2+ F." },
+    { v: "v3", note: "Added the GPA 3.0+ filter." },
+    { v: "v4", note: "Collapsed same-day duplicate entries on import." },
+    { v: "v5", note: "Cleaned up same-day duplicates already stored in the browser." },
+    { v: "v6", note: "Fixed trend calculation to group by calendar day instead of raw entries." },
+    { v: "v7", note: "Multiple CSV files for the same student now merge instead of overwrite." },
+    { v: "v8", note: "Student names display in Proper Case." },
+    { v: "v9", note: "Added this self-documenting changelog; added C-or-lower filters for Math and English courses." },
+    { v: "v10", note: "Included IE (insufficient evidence) as a low-grade signal in the Math/English filters." }
+  ];
+  const APP_VERSION = CHANGELOG[CHANGELOG.length - 1].v;
   const PERIODS = [1,2,3,4,5,6];
   const YEAR_LONG = new Set([1,2,3]);
   const GPA_AVERAGE = {"A":4.0,"A-":3.75,"B+":3.5,"B":3.0,"B-":2.75,"C+":2.5,"C":2.0,"F":0.0,"IE":null,"P":1.75};
@@ -346,6 +358,23 @@
       const l = latestGradeOf(student, p, sem);
       return l && l.g === "F";
     }).length;
+  }
+  const SUBJECT_KEYWORDS = {
+    math: ["math", "algebra", "geometry", "calculus", "trig", "statistics", "precalc", "pre-calc"],
+    english: ["english", "literature", "language arts", "ela", "reading", "writing", "composition"]
+  };
+  function hasLowGradeInSubject(student, sem, subjectKey){
+    const keywords = SUBJECT_KEYWORDS[subjectKey];
+    return PERIODS.some(p => {
+      const name = (courseNameOf(student, p, sem) || "").toLowerCase();
+      if (!name) return false;
+      if (!keywords.some(k => name.includes(k))) return false;
+      const latest = latestGradeOf(student, p, sem);
+      if (!latest) return false;
+      if (latest.g === "IE") return true;
+      const val = GPA_AVERAGE[latest.g];
+      return val !== null && val !== undefined && val <= 2.0;
+    });
   }
   function trendOf(student, sem){
     let pool = [];
@@ -657,6 +686,8 @@
       { id: "hasF", label: "Has 1+ F" },
       { id: "hasF2", label: "Has 2+ F" },
       { id: "gpa3", label: "GPA 3.0+" },
+      { id: "lowMath", label: "C/IE or lower · Math" },
+      { id: "lowEnglish", label: "C/IE or lower · English" },
       { id: "down", label: "Trending down" },
       { id: "up", label: "Trending up" }
     ];
@@ -684,6 +715,7 @@
     versionTag.style.opacity = "0.75";
     versionTag.style.marginTop = "4px";
     versionTag.textContent = `Teacher Dashboard ${APP_VERSION}`;
+    versionTag.title = CHANGELOG[CHANGELOG.length - 1].note;
     app.appendChild(versionTag);
 
     renderRosterOnly();
@@ -700,6 +732,8 @@
           fCount,
           hasF: fCount >= 1,
           hasF2: fCount >= 2,
+          lowMath: hasLowGradeInSubject(student, semester, "math"),
+          lowEnglish: hasLowGradeInSubject(student, semester, "english"),
           trend: trendOf(student, semester)
         };
       });
@@ -720,6 +754,8 @@
       if (activeFilter === "hasF") filtered = filtered.filter(c => c.hasF);
       else if (activeFilter === "hasF2") filtered = filtered.filter(c => c.hasF2);
       else if (activeFilter === "gpa3") filtered = filtered.filter(c => c.gpa !== null && c.gpa >= 3.0);
+      else if (activeFilter === "lowMath") filtered = filtered.filter(c => c.lowMath);
+      else if (activeFilter === "lowEnglish") filtered = filtered.filter(c => c.lowEnglish);
       else if (activeFilter === "down") filtered = filtered.filter(c => c.trend.dir === "down");
       else if (activeFilter === "up") filtered = filtered.filter(c => c.trend.dir === "up");
       if (searchText.trim()) {
