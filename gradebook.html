@@ -396,6 +396,11 @@
   }
   .stamp:hover { border-color: var(--maroon); }
   .stamp:active { background: var(--maroon); color: #fff; }
+  .stamp.selected {
+    background: var(--maroon);
+    border-color: var(--maroon);
+    color: #fff;
+  }
 
   .history-list {
     list-style: none;
@@ -624,7 +629,8 @@
     { v: "v21", note: "Moved the GPA button to the front of the period strip." },
     { v: "v22", note: "Fixed a GPA/period display bug caused by a strip index mismatch." },
     { v: "v23", note: "Prevented duplicate same-day grade entries." },
-    { v: "v24", note: "Added this self-documenting changelog." }
+    { v: "v24", note: "Added this self-documenting changelog." },
+    { v: "v25", note: "Highlighted the latest logged grade button for each course." }
   ];
   const APP_VERSION = CHANGELOG[CHANGELOG.length - 1].v;
   const PERIODS = [1,2,3,4,5,6];
@@ -1002,6 +1008,7 @@
       group.grades.forEach(letter => {
         const btn = document.createElement("button");
         btn.className = "stamp";
+        btn.dataset.grade = letter;
         btn.textContent = letter;
         btn.addEventListener("click", () => {
           addGrade(activePeriod, state.semester, letter);
@@ -1014,6 +1021,7 @@
           renderPeriodStripGrade();
           renderIeBanner();
           refreshGpaCard();
+          updateStampHighlight();
         });
         stampGrid.appendChild(btn);
       });
@@ -1021,6 +1029,16 @@
       stampSection.appendChild(groupWrap);
     });
     colInput.appendChild(stampSection);
+
+    function updateStampHighlight(){
+      const l = latestGrade(activePeriod, state.semester);
+      stampSection.querySelectorAll(".stamp").forEach(b => {
+        const on = !!l && b.dataset.grade === l.g;
+        b.classList.toggle("selected", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    updateStampHighlight();
 
     // History + chart container (re-rendered independently after logging)
     const dynamicWrap = document.createElement("div");
@@ -1066,6 +1084,7 @@
           renderPeriodStripGrade();
           renderIeBanner();
           refreshGpaCard();
+          updateStampHighlight();
         });
         dynamicWrap.appendChild(list);
 
